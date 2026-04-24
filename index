@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Work Hours Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" onerror="showCdnError()"></script>
+  <script>
+    function showCdnError() {
+      document.addEventListener('DOMContentLoaded', function() {
+        document.body.innerHTML = `
+          <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0e0f11;font-family:'DM Sans',sans-serif;padding:2rem;">
+            <div style="background:#16181c;border:1px solid #2a2d35;border-radius:16px;padding:2.5rem;max-width:440px;text-align:center;">
+              <div style="font-size:32px;margin-bottom:1rem;">⚠️</div>
+              <div style="color:#e8eaf0;font-size:18px;font-weight:500;margin-bottom:0.75rem;">Preview unavailable here</div>
+              <div style="color:#6b7280;font-size:14px;line-height:1.6;">
+                This app requires the Supabase library which is blocked in this preview environment.<br><br>
+                <strong style="color:#4ade80;">Once you upload it to GitHub Pages, it will work perfectly.</strong><br><br>
+                Follow the <code style="background:#1e2128;padding:2px 6px;border-radius:4px;">SETUP.md</code> instructions to get it live.
+              </div>
+            </div>
+          </div>`;
+      });
+    }
+  </script>
+  <style>
+    :root {
+      --bg: #0e0f11;
+      --surface: #16181c;
+      --surface2: #1e2128;
+      --border: #2a2d35;
+      --accent: #4ade80;
+      --accent-dim: rgba(74,222,128,0.12);
+      --accent-dim2: rgba(74,222,128,0.06);
+      --text: #e8eaf0;
+      --muted: #6b7280;
+      --danger: #f87171;
+      --warn: #fbbf24;
+      --mono: 'DM Mono', monospace;
+      --sans: 'DM Sans', sans-serif;
+      --radius: 10px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); }
+
+    /* AUTH */
+    #auth-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 380px;
+    }
+    .auth-logo {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--accent);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 2rem;
+    }
+    .auth-title {
+      font-size: 22px;
+      font-weight: 500;
+      margin-bottom: 0.4rem;
+    }
+    .auth-sub {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 2rem;
+    }
+    .auth-tabs {
+      display: flex;
+      gap: 0;
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 3px;
+      margin-bottom: 1.5rem;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 7px;
+      font-size: 13px;
+      font-family: var(--sans);
+      font-weight: 500;
+      border: none;
+      background: none;
+      color: var(--muted);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .auth-tab.active { background: var(--surface); color: var(--text); }
+    .field-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1rem; }
+    .field-label { font-size: 12px; color: var(--muted); font-family: var(--mono); letter-spacing: 0.05em; }
+    input[type=email], input[type=password], input[type=text], input[type=date], input[type=time], textarea {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      padding: 10px 12px;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: var(--accent);
+      color: #0a0f0a;
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 18px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      width: 100%;
+    }
+    .btn:hover { opacity: 0.88; }
+    .btn-ghost {
+      background: var(--surface2);
+      color: var(--text);
+      font-weight: 500;
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); opacity: 1; }
+    .btn-danger { background: var(--danger); color: #1a0000; }
+    .btn-sm { padding: 6px 12px; font-size: 13px; width: auto; border-radius: 6px; }
+    .auth-msg { font-size: 13px; margin-top: 0.75rem; min-height: 18px; }
+    .auth-msg.error { color: var(--danger); }
+    .auth-msg.success { color: var(--accent); }
+
+    /* APP LAYOUT */
+    #app { display: none; min-height: 100vh; flex-direction: column; }
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.5rem;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-logo {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .user-pill {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--mono);
+      max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .sign-out-btn {
+      font-size: 12px;
+      font-family: var(--mono);
+      color: var(--muted);
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .sign-out-btn:hover { color: var(--danger); border-color: var(--danger); }
+
+    main {
+      flex: 1;
+      padding: 1.5rem;
+      max-width: 960px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* TIMER */
+    .timer-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .timer-card.running { border-color: var(--accent); }
+    .timer-section-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    .timer-display {
+      font-family: var(--mono);
+      font-size: 52px;
+      font-weight: 300;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      line-height: 1;
+      margin-bottom: 0.5rem;
+    }
+    .timer-display.running { color: var(--accent); }
+    .timer-meta {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+      min-height: 18px;
+    }
+    .timer-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .timer-desc-input {
+      flex: 1;
+      min-width: 160px;
+    }
+    .timer-desc-input input { padding: 8px 12px; font-size: 13px; }
+
+    /* WEEK GOAL BAR */
+    .goal-bar-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .goal-stats { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+    .goal-stat { display: flex; flex-direction: column; }
+    .goal-stat-val {
+      font-family: var(--mono);
+      font-size: 22px;
+      font-weight: 400;
+      color: var(--text);
+    }
+    .goal-stat-val.over { color: var(--accent); }
+    .goal-stat-label { font-size: 11px; color: var(--muted); font-family: var(--mono); letter-spacing: 0.08em; margin-top: 2px; }
+    .goal-bar-container { flex: 1; min-width: 160px; }
+    .goal-bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .goal-bar-track {
+      height: 6px;
+      background: var(--surface2);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .goal-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 99px;
+      transition: width 0.4s ease;
+    }
+    .goal-bar-fill.over { background: var(--warn); }
+
+    /* NAV TABS */
+    .view-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 1.25rem;
+      width: fit-content;
+    }
+    .view-tab {
+      padding: 7px 18px;
+      font-size: 13px;
+      font-family: var(--mono);
+      letter-spacing: 0.05em;
+      border: none;
+      background: none;
+      color: var(--muted);
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .view-tab.active { background: var(--surface2); color: var(--text); }
+
+    /* CALENDAR NAV */
+    .cal-nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 1rem;
+    }
+    .cal-nav-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      transition: border-color 0.15s;
+    }
+    .cal-nav-btn:hover { border-color: var(--accent); }
+    .cal-nav-title {
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--text);
+    }
+    .today-btn {
+      margin-left: auto;
+      font-size: 12px;
+      font-family: var(--mono);
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .today-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+    /* WEEK VIEW */
+    .week-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      margin-bottom: 1.5rem;
+    }
+    .week-day {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 10px;
+      min-height: 110px;
+      display: flex;
+      flex-direction: column;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .week-day:hover { border-color: var(--accent); }
+    .week-day.today { border-color: var(--accent); background: var(--accent-dim2); }
+    .week-day.selected { border-color: var(--accent); background: var(--accent-dim); }
+    .day-name {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .day-num {
+      font-family: var(--mono);
+      font-size: 18px;
+      font-weight: 400;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .week-day.today .day-num { color: var(--accent); }
+    .day-hours {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent);
+      margin-top: auto;
+    }
+    .day-hours.empty { color: var(--muted); }
+    .day-sessions {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin-top: 4px;
+    }
+    .day-session-pip {
+      height: 3px;
+      background: var(--accent);
+      border-radius: 2px;
+      opacity: 0.5;
+    }
+
+    /* MONTH VIEW */
+    .month-grid-header {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      margin-bottom: 4px;
+    }
+    .month-day-name {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-align: center;
+      padding: 4px 0;
+    }
+    .month-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    .month-cell {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 6px;
+      min-height: 68px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      display: flex;
+      flex-direction: column;
+    }
+    .month-cell:hover { border-color: var(--accent); }
+    .month-cell.today { border-color: var(--accent); background: var(--accent-dim2); }
+    .month-cell.selected { background: var(--accent-dim); border-color: var(--accent); }
+    .month-cell.other-month { opacity: 0.35; }
+    .month-cell-num {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .month-cell.today .month-cell-num { color: var(--accent); }
+    .month-cell-hours {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      margin-top: auto;
+    }
+    .month-cell-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-top: 4px;
+      opacity: 0.6;
+    }
+
+    /* ENTRY LIST */
+    .entry-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.25rem 1.5rem;
+      margin-top: 1.25rem;
+    }
+    .entry-panel-title {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .entry-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .entry-row:last-child { border-bottom: none; }
+    .entry-time {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      min-width: 110px;
+    }
+    .entry-desc { flex: 1; color: var(--text); }
+    .entry-dur {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--accent);
+      min-width: 48px;
+      text-align: right;
+    }
+    .del-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: all 0.15s;
+    }
+    .del-btn:hover { color: var(--danger); background: rgba(248,113,113,0.08); }
+    .empty-state { font-size: 13px; color: var(--muted); font-family: var(--mono); padding: 1rem 0; }
+
+    /* MANUAL LOG FORM */
+    .manual-form {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.25rem 1.5rem;
+      margin-top: 1.25rem;
+    }
+    .form-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+    .form-field { display: flex; flex-direction: column; gap: 5px; }
+    .form-field label { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.08em; }
+    .form-field input { padding: 8px 10px; font-size: 13px; }
+    .error-msg { color: var(--danger); font-size: 12px; font-family: var(--mono); margin-top: 6px; min-height: 16px; }
+
+    /* RESPONSIVE */
+    @media (max-width: 600px) {
+      main { padding: 1rem; }
+      .week-grid { grid-template-columns: repeat(7,1fr); gap: 4px; }
+      .week-day { padding: 8px 4px; min-height: 80px; }
+      .day-num { font-size: 14px; }
+      .timer-display { font-size: 36px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">⏱ WORKHRS</div>
+    <div class="auth-title">Track your time</div>
+    <div class="auth-sub">Sign in to sync across all your devices.</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="setAuthTab('login')">Sign in</button>
+      <button class="auth-tab" onclick="setAuthTab('signup')">Sign up</button>
+    </div>
+    <div class="field-group">
+      <span class="field-label">EMAIL</span>
+      <input type="email" id="auth-email" placeholder="you@example.com" />
+    </div>
+    <div class="field-group">
+      <span class="field-label">PASSWORD</span>
+      <input type="password" id="auth-password" placeholder="••••••••" />
+    </div>
+    <button class="btn" id="auth-btn" onclick="handleAuth()">Sign in</button>
+    <div class="auth-msg" id="auth-msg"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="header-logo">⏱ WORKHRS</div>
+    <div class="header-right">
+      <span class="user-pill" id="user-email"></span>
+      <button class="sign-out-btn" onclick="signOut()">sign out</button>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- TIMER -->
+    <div class="timer-card" id="timer-card">
+      <div class="timer-section-label">Live Timer</div>
+      <div class="timer-display" id="timer-display">00:00:00</div>
+      <div class="timer-meta" id="timer-meta">—</div>
+      <div class="timer-controls">
+        <div class="timer-desc-input">
+          <input type="text" id="timer-desc" placeholder="What are you working on?" />
+        </div>
+        <button class="btn btn-sm" id="timer-btn" onclick="toggleTimer()">▶ Start</button>
+        <button class="btn btn-ghost btn-sm" id="save-btn" onclick="saveTimerSession()" style="display:none">✓ Save & Stop</button>
+      </div>
+    </div>
+
+    <!-- WEEK GOAL -->
+    <div class="goal-bar-wrap">
+      <div class="goal-stats">
+        <div class="goal-stat">
+          <span class="goal-stat-val" id="g-week">0h 0m</span>
+          <span class="goal-stat-label">THIS WEEK</span>
+        </div>
+        <div class="goal-stat">
+          <span class="goal-stat-val" id="g-today">0h 0m</span>
+          <span class="goal-stat-label">TODAY</span>
+        </div>
+        <div class="goal-stat">
+          <span class="goal-stat-val" id="g-month">0h 0m</span>
+          <span class="goal-stat-label">THIS MONTH</span>
+        </div>
+      </div>
+      <div class="goal-bar-container">
+        <div class="goal-bar-label">
+          <span>Weekly goal</span>
+          <span id="g-pct">0%</span>
+        </div>
+        <div class="goal-bar-track">
+          <div class="goal-bar-fill" id="g-bar"></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:5px;" id="g-remain"></div>
+      </div>
+    </div>
+
+    <!-- VIEW TOGGLE -->
+    <div class="view-tabs">
+      <button class="view-tab active" onclick="setView('week')">week</button>
+      <button class="view-tab" onclick="setView('month')">month</button>
+      <button class="view-tab" onclick="setView('log')">log</button>
+    </div>
+
+    <!-- CALENDAR NAV -->
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="navPrev()">‹</button>
+      <button class="cal-nav-btn" onclick="navNext()">›</button>
+      <span class="cal-nav-title" id="cal-title"></span>
+      <button class="today-btn" onclick="goToday()">today</button>
+    </div>
+
+    <!-- VIEWS -->
+    <div id="view-week"></div>
+    <div id="view-month" style="display:none"></div>
+    <div id="view-log" style="display:none"></div>
+
+    <!-- SELECTED DAY ENTRIES -->
+    <div id="day-panel" style="display:none">
+      <div class="entry-panel">
+        <div class="entry-panel-title">
+          <span id="day-panel-title">Entries</span>
+        </div>
+        <div id="day-entries"></div>
+      </div>
+      <!-- MANUAL LOG -->
+      <div class="manual-form">
+        <div class="entry-panel-title">
+          <span>Log manually</span>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>START</label>
+            <input type="time" id="m-start" />
+          </div>
+          <div class="form-field">
+            <label>END</label>
+            <input type="time" id="m-end" />
+          </div>
+          <div class="form-field" style="flex:1;min-width:140px;">
+            <label>DESCRIPTION</label>
+            <input type="text" id="m-desc" placeholder="optional" />
+          </div>
+          <button class="btn btn-sm" onclick="manualLog()" style="margin-bottom:0;">+ Add</button>
+        </div>
+        <div class="error-msg" id="m-err"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ─── CONFIG ────────────────────────────────────────────
+// PASTE YOUR SUPABASE PROJECT URL AND ANON KEY HERE:
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const WEEKLY_GOAL_HRS = 32;
+// ───────────────────────────────────────────────────────
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let entries = [];
+let timerInterval = null;
+let timerStart = null;
+let timerRunning = false;
+let currentView = 'week';
+let viewDate = new Date();
+let selectedDate = todayStr();
+
+// ── AUTH ──────────────────────────────────────────────
+let authMode = 'login';
+function setAuthTab(mode) {
+  authMode = mode;
+  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&mode==='login')||(i===1&&mode==='signup')));
+  document.getElementById('auth-btn').textContent = mode === 'login' ? 'Sign in' : 'Create account';
+  document.getElementById('auth-msg').textContent = '';
+}
+async function handleAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const msg = document.getElementById('auth-msg');
+  msg.className = 'auth-msg';
+  msg.textContent = authMode === 'login' ? 'Signing in…' : 'Creating account…';
+  let res;
+  if (authMode === 'login') {
+    res = await sb.auth.signInWithPassword({ email, password });
+  } else {
+    res = await sb.auth.signUp({ email, password });
+  }
+  if (res.error) {
+    msg.className = 'auth-msg error';
+    msg.textContent = res.error.message;
+  } else if (authMode === 'signup') {
+    msg.className = 'auth-msg success';
+    msg.textContent = 'Check your email to confirm your account!';
+  } else {
+    initApp(res.data.user);
+  }
+}
+async function signOut() {
+  await sb.auth.signOut();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  entries = [];
+  stopTimer(false);
+}
+sb.auth.onAuthStateChange((event, session) => {
+  if (session?.user) initApp(session.user);
+});
+
+// ── INIT ──────────────────────────────────────────────
+async function initApp(user) {
+  currentUser = user;
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('user-email').textContent = user.email;
+  await loadEntries();
+  render();
+}
+
+// ── DATA ──────────────────────────────────────────────
+async function loadEntries() {
+  const { data, error } = await sb.from('work_entries').select('*').eq('user_id', currentUser.id).order('date', { ascending: false });
+  if (!error) entries = data || [];
+}
+async function addEntry(entry) {
+  const { data, error } = await sb.from('work_entries').insert([{ ...entry, user_id: currentUser.id }]).select();
+  if (!error && data) entries.unshift(data[0]);
+}
+async function deleteEntry(id) {
+  await sb.from('work_entries').delete().eq('id', id).eq('user_id', currentUser.id);
+  entries = entries.filter(e => e.id !== id);
+}
+
+// ── TIMER ─────────────────────────────────────────────
+function toggleTimer() {
+  if (!timerRunning) {
+    timerRunning = true;
+    timerStart = new Date();
+    document.getElementById('timer-btn').textContent = '⏸ Pause';
+    document.getElementById('save-btn').style.display = 'inline-flex';
+    document.getElementById('timer-card').classList.add('running');
+    document.getElementById('timer-display').classList.add('running');
+    timerInterval = setInterval(updateTimerDisplay, 1000);
+    updateTimerDisplay();
+  } else {
+    clearInterval(timerInterval);
+    timerRunning = false;
+    document.getElementById('timer-btn').textContent = '▶ Resume';
+    document.getElementById('timer-card').classList.remove('running');
+    document.getElementById('timer-display').classList.remove('running');
+  }
+}
+function updateTimerDisplay() {
+  const elapsed = Math.floor((Date.now() - timerStart) / 1000);
+  const h = Math.floor(elapsed/3600), m = Math.floor((elapsed%3600)/60), s = elapsed%60;
+  document.getElementById('timer-display').textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+  const st = timerStart;
+  document.getElementById('timer-meta').textContent = `Started at ${fmtTime(st)}`;
+}
+async function saveTimerSession() {
+  if (!timerStart) return;
+  const now = new Date();
+  const hours = (now - timerStart) / 3600000;
+  if (hours < 0.01) { alert('Session too short to save.'); return; }
+  const desc = document.getElementById('timer-desc').value.trim();
+  const dateStr = toDateStr(timerStart);
+  await addEntry({
+    date: dateStr,
+    start_time: fmtTime(timerStart),
+    end_time: fmtTime(now),
+    hours: Math.round(hours * 1000) / 1000,
+    description: desc || null
+  });
+  stopTimer(true);
+  render();
+}
+function stopTimer(reset) {
+  clearInterval(timerInterval);
+  timerRunning = false;
+  if (reset) {
+    timerStart = null;
+    document.getElementById('timer-display').textContent = '00:00:00';
+    document.getElementById('timer-meta').textContent = '—';
+    document.getElementById('timer-desc').value = '';
+    document.getElementById('save-btn').style.display = 'none';
+    document.getElementById('timer-btn').textContent = '▶ Start';
+  }
+  document.getElementById('timer-card').classList.remove('running');
+  document.getElementById('timer-display').classList.remove('running');
+}
+
+// ── MANUAL LOG ────────────────────────────────────────
+async function manualLog() {
+  const start = document.getElementById('m-start').value;
+  const end = document.getElementById('m-end').value;
+  const desc = document.getElementById('m-desc').value.trim();
+  const err = document.getElementById('m-err');
+  if (!start || !end) { err.textContent = 'Please enter start and end times.'; return; }
+  const [sh,sm] = start.split(':').map(Number);
+  const [eh,em] = end.split(':').map(Number);
+  let hrs = (eh*60+em - sh*60-sm)/60;
+  if (hrs <= 0) hrs += 24;
+  if (hrs > 16) { err.textContent = 'Duration seems too long — please check times.'; return; }
+  err.textContent = '';
+  await addEntry({ date: selectedDate, start_time: start, end_time: end, hours: Math.round(hrs*1000)/1000, description: desc||null });
+  document.getElementById('m-start').value = '';
+  document.getElementById('m-end').value = '';
+  document.getElementById('m-desc').value = '';
+  render();
+}
+
+// ── VIEWS ─────────────────────────────────────────────
+function setView(v) {
+  currentView = v;
+  document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.view-tab')[['week','month','log'].indexOf(v)].classList.add('active');
+  render();
+}
+function navPrev() {
+  if (currentView==='week') viewDate = addDays(viewDate,-7);
+  else if (currentView==='month') viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()-1, 1);
+  else viewDate = addDays(viewDate,-7);
+  render();
+}
+function navNext() {
+  if (currentView==='week') viewDate = addDays(viewDate,7);
+  else if (currentView==='month') viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()+1, 1);
+  else viewDate = addDays(viewDate,7);
+  render();
+}
+function goToday() { viewDate = new Date(); selectedDate = todayStr(); render(); }
+
+function render() {
+  updateStats();
+  document.getElementById('view-week').style.display = currentView==='week' ? '' : 'none';
+  document.getElementById('view-month').style.display = currentView==='month' ? '' : 'none';
+  document.getElementById('view-log').style.display = currentView==='log' ? '' : 'none';
+  if (currentView==='week') renderWeek();
+  else if (currentView==='month') renderMonth();
+  else renderFullLog();
+  renderDayPanel();
+}
+
+function renderWeek() {
+  const mon = weekMonday(viewDate);
+  document.getElementById('cal-title').textContent = `Week of ${mon.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}`;
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  let html = '<div class="week-grid">';
+  for (let i=0;i<7;i++) {
+    const d = addDays(mon,i);
+    const ds = toDateStr(d);
+    const dayEntries = entries.filter(e=>e.date===ds);
+    const hrs = dayEntries.reduce((s,e)=>s+e.hours,0);
+    const isToday = ds===todayStr();
+    const isSel = ds===selectedDate;
+    html += `<div class="week-day${isToday?' today':''}${isSel?' selected':''}" onclick="selectDay('${ds}')">
+      <div class="day-name">${days[i]}</div>
+      <div class="day-num">${d.getDate()}</div>
+      <div class="day-hours${hrs===0?' empty':''}">${hrs>0?fmtHrs(hrs):'—'}</div>
+      <div class="day-sessions">${dayEntries.slice(0,4).map(()=>'<div class="day-session-pip"></div>').join('')}</div>
+    </div>`;
+  }
+  html += '</div>';
+  document.getElementById('view-week').innerHTML = html;
+}
+
+function renderMonth() {
+  const year = viewDate.getFullYear(), month = viewDate.getMonth();
+  document.getElementById('cal-title').textContent = new Date(year,month,1).toLocaleDateString(undefined,{month:'long',year:'numeric'});
+  const firstDay = new Date(year,month,1);
+  let startDow = firstDay.getDay(); // 0=Sun
+  startDow = startDow===0?6:startDow-1; // convert to Mon=0
+  const daysInMonth = new Date(year,month+1,0).getDate();
+  const days = ['Mo','Tu','We','Th','Fr','Sa','Su'];
+  let html = '<div class="month-grid-header">' + days.map(d=>`<div class="month-day-name">${d}</div>`).join('') + '</div>';
+  html += '<div class="month-grid">';
+  // prev month cells
+  const prevDays = new Date(year,month,0).getDate();
+  for (let i=startDow-1;i>=0;i--) {
+    const d = new Date(year,month-1,prevDays-i);
+    const ds = toDateStr(d);
+    const hrs = entries.filter(e=>e.date===ds).reduce((s,e)=>s+e.hours,0);
+    html += `<div class="month-cell other-month" onclick="selectDay('${ds}')">
+      <div class="month-cell-num">${d.getDate()}</div>
+      ${hrs>0?`<div class="month-cell-hours">${fmtHrs(hrs)}</div>`:''}
+    </div>`;
+  }
+  for (let day=1;day<=daysInMonth;day++) {
+    const d = new Date(year,month,day);
+    const ds = toDateStr(d);
+    const hrs = entries.filter(e=>e.date===ds).reduce((s,e)=>s+e.hours,0);
+    const isToday = ds===todayStr();
+    const isSel = ds===selectedDate;
+    html += `<div class="month-cell${isToday?' today':''}${isSel?' selected':''}" onclick="selectDay('${ds}')">
+      <div class="month-cell-num">${day}</div>
+      ${hrs>0?`<div class="month-cell-hours">${fmtHrs(hrs)}</div><div class="month-cell-dot"></div>`:''}
+    </div>`;
+  }
+  html += '</div>';
+  document.getElementById('view-month').innerHTML = html;
+}
+
+function renderFullLog() {
+  document.getElementById('cal-title').textContent = 'All entries';
+  const sorted = [...entries].sort((a,b)=>b.date.localeCompare(a.date));
+  if (sorted.length===0) {
+    document.getElementById('view-log').innerHTML = '<div class="empty-state">No entries yet.</div>';
+    return;
+  }
+  let html = '<div class="entry-panel"><div class="entry-panel-title"><span>All logged sessions</span></div>';
+  let lastDate = null;
+  sorted.forEach(e => {
+    if (e.date !== lastDate) {
+      lastDate = e.date;
+      const d = new Date(e.date+'T00:00:00');
+      html += `<div style="font-family:var(--mono);font-size:11px;color:var(--muted);padding:10px 0 4px;letter-spacing:0.08em;">${d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'})}</div>`;
+    }
+    html += entryRowHTML(e);
+  });
+  html += '</div>';
+  document.getElementById('view-log').innerHTML = html;
+}
+
+function entryRowHTML(e) {
+  const timeStr = e.start_time && e.end_time ? `${e.start_time} – ${e.end_time}` : '';
+  return `<div class="entry-row">
+    <span class="entry-time">${timeStr}</span>
+    <span class="entry-desc">${e.description || '<span style="color:var(--muted)">—</span>'}</span>
+    <span class="entry-dur">${fmtHrs(e.hours)}</span>
+    <button class="del-btn" onclick="handleDelete(${e.id})">✕</button>
+  </div>`;
+}
+
+function selectDay(ds) {
+  selectedDate = ds;
+  render();
+}
+
+function renderDayPanel() {
+  const panel = document.getElementById('day-panel');
+  if (!selectedDate) { panel.style.display='none'; return; }
+  panel.style.display = '';
+  const d = new Date(selectedDate+'T00:00:00');
+  document.getElementById('day-panel-title').textContent = d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+  const dayEntries = entries.filter(e=>e.date===selectedDate).sort((a,b)=>a.start_time?.localeCompare(b.start_time));
+  const el = document.getElementById('day-entries');
+  if (dayEntries.length===0) {
+    el.innerHTML = '<div class="empty-state">No entries for this day.</div>';
+  } else {
+    el.innerHTML = dayEntries.map(entryRowHTML).join('');
+  }
+}
+
+async function handleDelete(id) {
+  await deleteEntry(id);
+  render();
+}
+
+function updateStats() {
+  const today = todayStr();
+  const ws = toDateStr(weekMonday(new Date()));
+  const mo = today.slice(0,7);
+  let todayH=0, weekH=0, monthH=0;
+  entries.forEach(e => {
+    if (e.date===today) todayH+=e.hours;
+    if (e.date>=ws) weekH+=e.hours;
+    if (e.date.startsWith(mo)) monthH+=e.hours;
+  });
+  document.getElementById('g-today').textContent = fmtHrs(todayH);
+  document.getElementById('g-week').textContent = fmtHrs(weekH);
+  document.getElementById('g-month').textContent = fmtHrs(monthH);
+  const pct = Math.min(weekH/WEEKLY_GOAL_HRS*100,100);
+  const over = weekH > WEEKLY_GOAL_HRS;
+  document.getElementById('g-pct').textContent = Math.round(weekH/WEEKLY_GOAL_HRS*100)+'%';
+  const bar = document.getElementById('g-bar');
+  bar.style.width = pct+'%';
+  bar.classList.toggle('over', over);
+  const remain = WEEKLY_GOAL_HRS - weekH;
+  document.getElementById('g-remain').textContent = over ? `${fmtHrs(weekH-WEEKLY_GOAL_HRS)} over goal` : `${fmtHrs(remain)} remaining`;
+}
+
+// ── HELPERS ───────────────────────────────────────────
+function pad(n){return String(n).padStart(2,'0');}
+function todayStr(){const d=new Date();return toDateStr(d);}
+function toDateStr(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;}
+function fmtTime(d){return `${pad(d.getHours())}:${pad(d.getMinutes())}`;}
+function fmtHrs(h){const hrs=Math.floor(h),mins=Math.round((h-hrs)*60);return mins===0?`${hrs}h`:`${hrs}h ${mins}m`;}
+function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r;}
+function weekMonday(d){const day=d.getDay();const diff=d.getDate()-day+(day===0?-6:1);return new Date(d.getFullYear(),d.getMonth(),diff);}
+</script>
+</body>
+</html>
