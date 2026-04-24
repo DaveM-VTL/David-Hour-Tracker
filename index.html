@@ -759,8 +759,8 @@
 <script>
 // ─── CONFIG ────────────────────────────────────────────
 // PASTE YOUR SUPABASE PROJECT URL AND ANON KEY HERE:
-const SUPABASE_URL = 'https://ubmimrmihfgoiczkvixa.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVibWltcm1paGZnb2ljemt2aXhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMzYyMjUsImV4cCI6MjA5MjYxMjIyNX0.LfwpZgJA5t7GVvgIhBcDzq_bM71YceAW9U-9U7DXpPE';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 const WEEKLY_GOAL_HRS = 32;
 // ───────────────────────────────────────────────────────
 
@@ -824,7 +824,42 @@ async function initApp(user) {
   document.getElementById('app').style.display = 'flex';
   document.getElementById('user-email').textContent = user.email;
   await loadEntries();
+  restoreTimer();
   render();
+}
+
+function restoreTimer() {
+  try {
+    const saved = localStorage.getItem('wh_timer');
+    if (!saved) return;
+    const { startISO, desc } = JSON.parse(saved);
+    if (!startISO) return;
+    timerStart = new Date(startISO);
+    // Sanity check — don't restore if older than 24 hours
+    if (Date.now() - timerStart > 86400000) { localStorage.removeItem('wh_timer'); return; }
+    timerRunning = true;
+    if (desc) document.getElementById('timer-desc').value = desc;
+    document.getElementById('timer-btn').textContent = '⏸ Pause';
+    document.getElementById('save-btn').style.display = 'inline-flex';
+    document.getElementById('timer-card').classList.add('running');
+    document.getElementById('timer-display').classList.add('running');
+    const editRow = document.getElementById('timer-edit-row');
+    editRow.style.display = '';
+    document.getElementById('timer-start-edit').value = fmtTime(timerStart);
+    timerInterval = setInterval(updateTimerDisplay, 1000);
+    updateTimerDisplay();
+  } catch(e) { localStorage.removeItem('wh_timer'); }
+}
+
+function saveTimerState() {
+  if (timerStart) {
+    localStorage.setItem('wh_timer', JSON.stringify({
+      startISO: timerStart.toISOString(),
+      desc: document.getElementById('timer-desc').value
+    }));
+  } else {
+    localStorage.removeItem('wh_timer');
+  }
 }
 
 // ── DATA ──────────────────────────────────────────────
@@ -900,6 +935,7 @@ function toggleTimer() {
     document.getElementById('timer-start-edit').value = fmtTime(timerStart);
     timerInterval = setInterval(updateTimerDisplay, 1000);
     updateTimerDisplay();
+    saveTimerState();
   } else {
     clearInterval(timerInterval);
     timerRunning = false;
@@ -917,6 +953,7 @@ function adjustTimerStart() {
   // If adjusted start is in the future, assume it was yesterday
   if (newStart > new Date()) newStart.setDate(newStart.getDate() - 1);
   timerStart = newStart;
+  saveTimerState();
   updateTimerDisplay();
 }
 function updateTimerDisplay() {
@@ -955,6 +992,7 @@ function stopTimer(reset) {
     document.getElementById('timer-btn').textContent = '▶ Start';
     document.getElementById('timer-edit-row').style.display = 'none';
     document.getElementById('timer-start-edit').value = '';
+    localStorage.removeItem('wh_timer');
   }
   document.getElementById('timer-card').classList.remove('running');
   document.getElementById('timer-display').classList.remove('running');
