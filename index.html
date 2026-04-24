@@ -518,7 +518,51 @@
       transition: all 0.15s;
     }
     .del-btn:hover { color: var(--danger); background: rgba(248,113,113,0.08); }
+    .edit-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 13px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: all 0.15s;
+    }
+    .edit-btn:hover { color: var(--accent); background: var(--accent-dim); }
     .empty-state { font-size: 13px; color: var(--muted); font-family: var(--mono); padding: 1rem 0; }
+
+    /* MODAL */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.75rem;
+      width: 100%;
+      max-width: 400px;
+    }
+    .modal-title {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
+    }
+    .modal-fields { display: flex; flex-direction: column; gap: 12px; }
+    .modal-row { display: flex; gap: 10px; }
+    .modal-actions { display: flex; gap: 8px; margin-top: 1.25rem; }
+    .modal-actions .btn { flex: 1; }
 
     /* MANUAL LOG FORM */
     .manual-form {
@@ -592,6 +636,40 @@
         </div>
         <button class="btn btn-sm" id="timer-btn" onclick="toggleTimer()">▶ Start</button>
         <button class="btn btn-ghost btn-sm" id="save-btn" onclick="saveTimerSession()" style="display:none">✓ Save & Stop</button>
+      </div>
+      <div id="timer-edit-row" style="display:none; margin-top:10px; display:none;">
+        <div class="form-row" style="align-items:center; gap:8px;">
+          <span style="font-family:var(--mono);font-size:11px;color:var(--muted);">ADJUST START:</span>
+          <input type="time" id="timer-start-edit" style="width:120px;padding:6px 10px;font-size:13px;" onchange="adjustTimerStart()" />
+        </div>
+      </div>
+    </div>
+
+    <!-- EDIT ENTRY MODAL -->
+    <div class="modal-overlay" id="edit-modal">
+      <div class="modal">
+        <div class="modal-title">Edit Entry</div>
+        <div class="modal-fields">
+          <div class="modal-row">
+            <div class="form-field" style="flex:1;">
+              <label>START</label>
+              <input type="time" id="edit-start" />
+            </div>
+            <div class="form-field" style="flex:1;">
+              <label>END</label>
+              <input type="time" id="edit-end" />
+            </div>
+          </div>
+          <div class="form-field">
+            <label>DESCRIPTION</label>
+            <input type="text" id="edit-desc" placeholder="optional" />
+          </div>
+          <div class="error-msg" id="edit-err"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
+          <button class="btn" onclick="saveEditEntry()">Save changes</button>
+        </div>
       </div>
     </div>
 
@@ -681,8 +759,9 @@
 <script>
 // ─── CONFIG ────────────────────────────────────────────
 // PASTE YOUR SUPABASE PROJECT URL AND ANON KEY HERE:
-const SUPABASE_URL = 'https://ubmimrmihfgoiczkvixa.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVibWltcm1paGZnb2ljemt2aXhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMzYyMjUsImV4cCI6MjA5MjYxMjIyNX0.LfwpZgJA5t7GVvgIhBcDzq_bM71YceAW9U-9U7DXpPE';const WEEKLY_GOAL_HRS = 32;
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const WEEKLY_GOAL_HRS = 32;
 // ───────────────────────────────────────────────────────
 
 const { createClient } = supabase;
@@ -761,6 +840,50 @@ async function deleteEntry(id) {
   await sb.from('work_entries').delete().eq('id', id).eq('user_id', currentUser.id);
   entries = entries.filter(e => e.id !== id);
 }
+async function updateEntry(id, changes) {
+  const { data, error } = await sb.from('work_entries').update(changes).eq('id', id).eq('user_id', currentUser.id).select();
+  if (!error && data) {
+    const idx = entries.findIndex(e => e.id === id);
+    if (idx !== -1) entries[idx] = { ...entries[idx], ...data[0] };
+  }
+}
+
+// ── EDIT MODAL ────────────────────────────────────────
+let editingId = null;
+function openEditModal(id) {
+  const e = entries.find(x => x.id === id);
+  if (!e) return;
+  editingId = id;
+  document.getElementById('edit-start').value = e.start_time || '';
+  document.getElementById('edit-end').value = e.end_time || '';
+  document.getElementById('edit-desc').value = e.description || '';
+  document.getElementById('edit-err').textContent = '';
+  document.getElementById('edit-modal').classList.add('open');
+}
+function closeEditModal() {
+  editingId = null;
+  document.getElementById('edit-modal').classList.remove('open');
+}
+async function saveEditEntry() {
+  const start = document.getElementById('edit-start').value;
+  const end = document.getElementById('edit-end').value;
+  const desc = document.getElementById('edit-desc').value.trim();
+  const err = document.getElementById('edit-err');
+  if (!start || !end) { err.textContent = 'Please enter start and end times.'; return; }
+  const [sh,sm] = start.split(':').map(Number);
+  const [eh,em] = end.split(':').map(Number);
+  let hrs = (eh*60+em - sh*60-sm)/60;
+  if (hrs <= 0) hrs += 24;
+  if (hrs > 16) { err.textContent = 'Duration too long — check times.'; return; }
+  err.textContent = '';
+  await updateEntry(editingId, { start_time: start, end_time: end, hours: Math.round(hrs*1000)/1000, description: desc||null });
+  closeEditModal();
+  render();
+}
+// Close modal on overlay click
+document.addEventListener('click', e => {
+  if (e.target.id === 'edit-modal') closeEditModal();
+});
 
 // ── TIMER ─────────────────────────────────────────────
 function toggleTimer() {
@@ -771,6 +894,10 @@ function toggleTimer() {
     document.getElementById('save-btn').style.display = 'inline-flex';
     document.getElementById('timer-card').classList.add('running');
     document.getElementById('timer-display').classList.add('running');
+    // Show start time edit row and pre-fill with current start
+    const editRow = document.getElementById('timer-edit-row');
+    editRow.style.display = '';
+    document.getElementById('timer-start-edit').value = fmtTime(timerStart);
     timerInterval = setInterval(updateTimerDisplay, 1000);
     updateTimerDisplay();
   } else {
@@ -780,6 +907,17 @@ function toggleTimer() {
     document.getElementById('timer-card').classList.remove('running');
     document.getElementById('timer-display').classList.remove('running');
   }
+}
+function adjustTimerStart() {
+  const val = document.getElementById('timer-start-edit').value;
+  if (!val) return;
+  const [h, m] = val.split(':').map(Number);
+  const newStart = new Date();
+  newStart.setHours(h, m, 0, 0);
+  // If adjusted start is in the future, assume it was yesterday
+  if (newStart > new Date()) newStart.setDate(newStart.getDate() - 1);
+  timerStart = newStart;
+  updateTimerDisplay();
 }
 function updateTimerDisplay() {
   const elapsed = Math.floor((Date.now() - timerStart) / 1000);
@@ -815,6 +953,8 @@ function stopTimer(reset) {
     document.getElementById('timer-desc').value = '';
     document.getElementById('save-btn').style.display = 'none';
     document.getElementById('timer-btn').textContent = '▶ Start';
+    document.getElementById('timer-edit-row').style.display = 'none';
+    document.getElementById('timer-start-edit').value = '';
   }
   document.getElementById('timer-card').classList.remove('running');
   document.getElementById('timer-display').classList.remove('running');
@@ -958,7 +1098,8 @@ function entryRowHTML(e) {
     <span class="entry-time">${timeStr}</span>
     <span class="entry-desc">${e.description || '<span style="color:var(--muted)">—</span>'}</span>
     <span class="entry-dur">${fmtHrs(e.hours)}</span>
-    <button class="del-btn" onclick="handleDelete(${e.id})">✕</button>
+    <button class="edit-btn" onclick="openEditModal(${e.id})" title="Edit">✎</button>
+    <button class="del-btn" onclick="handleDelete(${e.id})" title="Delete">✕</button>
   </div>`;
 }
 
